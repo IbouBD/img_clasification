@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Classification</title>
+</head>
+<body>
+    <h1>Image Classification using t-SNE and K-Means</h1>
+
+    <h2>Upload Images</h2>
+    <div>
+        <form method="post" enctype="multipart/form-data">
+            <div>
+              <label for="file">Choose image files to upload</label>
+              <input name="files" type="file" id="ctrl" webkitdirectory directory multiple/>
+            </div>
+            <div>
+                <h3>Choose the number of classes</h3>
+                <input name="nb_cluster" id="nb_cluster" type="number" value="3" />
+
+                <button type="submit">Submit</button>
+            </div>
+        </form>
+    </div>
+</body>
+</html>

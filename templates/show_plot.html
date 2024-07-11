@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cluster Plot</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        #editor {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Cluster Plot</h1>
+    <div id="plot-container">
+        <!-- Le contenu du fichier cluster_plot.html sera injecté ici -->
+        <iframe src="{{ url_for('static', filename='cluster_plot.html') }}" width="100%" height="600px"></iframe>
+    </div>
+    <div>
+        <form method="post" action="{{ url_for('download_file') }}">
+            <button type="submit">Organize Files and Download</button>
+        </form>
+    </div>
+</body>
+</html>
