@@ -2,27 +2,41 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cluster Plot</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-        }
-        #editor {
-            margin-top: 20px;
-        }
-    </style>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
 </head>
 <body>
     <h1>Cluster Plot</h1>
     <div id="plot-container">
-        <!-- Le contenu du fichier cluster_plot.html sera injecté ici -->
-        <iframe src="{{ url_for('static', filename='cluster_plot.html') }}" width="100%" height="600px"></iframe>
+        <p id="loading-message">Processing... Please wait.</p>
+        <iframe id="plot-frame" src="" width="100%" height="600px" style="display: none;"></iframe>
     </div>
+    <h2>Download Sorted Images</h2>
     <div>
-        <form method="post" action="{{ url_for('download_file') }}">
-            <button type="submit">Organize Files and Download</button>
+        <form method="get" action="{{ url_for('download_zip', task_id=task_id) }}">
+            <button type="submit">Download Sorted Images</button>
         </form>
     </div>
+    <script>
+        function checkStatus() {
+            $.ajax({
+                url: "{{ url_for('task_status', task_id=task_id) }}",
+                success: function(data) {
+                    if (data.status === "SUCCESS") {
+                        $("#loading-message").hide();
+                        $("#plot-frame").attr("src", data.result).show();
+                    } else if (data.status === "PENDING") {
+                        setTimeout(checkStatus, 2000); // Retry after 2 seconds
+                    } else {
+                        $("#loading-message").text("An error occurred.");
+                    }
+                }
+            });
+        }
+
+        $(document).ready(function() {
+            checkStatus();
+        });
+    </script>
 </body>
 </html>

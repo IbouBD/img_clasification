@@ -25,8 +25,11 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
+for f in os.listdir(UPLOAD_FOLDER):
+    os.remove(os.path.join(UPLOAD_FOLDER, f))
+
 # Vérifier et créer le dossier 'static'
-STATIC_FOLDER = 'webapp_flask/static'
+STATIC_FOLDER = 'static'
 if not os.path.exists(STATIC_FOLDER):
     os.makedirs(STATIC_FOLDER)
 
@@ -56,7 +59,12 @@ def extract_features(image_path):
         print(f"Erreur lors de l'extraction des caractéristiques de {image_path}: {e}")
         return None
 
+
+
 async def process_images(image_folder, nb_cluster):
+    if not os.path.exists(UPLOAD_FOLDER):
+        os.makedirs(UPLOAD_FOLDER)
+
     features = []
     image_names = []
 
@@ -109,6 +117,8 @@ async def process_images(image_folder, nb_cluster):
     # Sauvegarde du graphique
     output_path = os.path.join(STATIC_FOLDER, 'cluster_plot.html')
     fig.write_html(output_path)
+    for f in os.listdir(UPLOAD_FOLDER):
+        os.remove(os.path.join(UPLOAD_FOLDER, f))
 
     return output_path
 
