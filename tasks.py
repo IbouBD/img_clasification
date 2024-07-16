@@ -1,68 +1,55 @@
-from flask import Flask, session
-from flask_session import Session
-import os
-import torch
-import torchvision.models as models
-import torchvision.transforms as transforms
+from flask import Flask, request, redirect, url_for, render_template, session, flash, send_file, jsonify
 from PIL import Image
 import numpy as np
+from celery import Celery
+import redis
 import pandas as pd
 from sklearn.manifold import TSNE
 from sklearn.cluster import KMeans
 import plotly.express as px
-import shutil
-from celery import Celery
-import redis
-import aspose.zip as az
+
+from utils import*
+
+def create_app():
+    app = Flask(__name__)
+    app.secret_key = 'CHANGEME'
+
+    # Configuration de l'upload de fichiers
+    app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+    app.config['SORTED_FOLDER'] = SORTED_FOLDER
+    app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg', 'bmp'}
+
+    # Configuration de Flask-Session
+    app.config['SESSION_TYPE'] = 'redis'
+    app.config['SESSION_PERMANENT'] = False
+    app.config['SESSION_USE_SIGNER'] = True
+    app.config['SESSION_REDIS'] = redis.StrictRedis(host='localhost', port=6379)
 
 
-
-app = Flask(__name__)
-app.secret_key = 'CHANGEME'
-
-# Configuration de l'upload de fichiers
-UPLOAD_FOLDER = 'uploads'
-SORTED_FOLDER = 'data'
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'bmp'}
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.config['SORTED_FOLDER'] = SORTED_FOLDER
-
-# Configuration de Flask-Session
-app.config['SESSION_TYPE'] = 'redis'
-app.config['SESSION_PERMANENT'] = False
-app.config['SESSION_USE_SIGNER'] = True
-app.config['SESSION_REDIS'] = redis.StrictRedis(host='localhost', port=6379)
-Session(app)
-
-# Configuration Celery
-def make_celery(app):
+    # Configuration Celery
     celery = Celery(app.import_name, backend='redis://localhost:6379/0', broker='redis://localhost:6379/0')
     celery.conf.update(app.config)
-    return celery
 
+    return app, celery
 
-celery = make_celery(app)
+app, celery = create_app()
 
-if not os.path.exists(UPLOAD_FOLDER):
-    os.makedirs(UPLOAD_FOLDER)
+#app = Celery('tasks', backend='rpc://', broker='redis://localhost:6379/0')
 
-for f in os.listdir(UPLOAD_FOLDER):
-    os.remove(os.path.join(UPLOAD_FOLDER, f))
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 # Charger le modèle VGG pré-entraîné
 vgg = models.vgg19(pretrained=True)
 feature_extractor = torch.nn.Sequential(*list(vgg.features.children()), vgg.avgpool)
 feature_extractor.eval()
 
-# Préparer la transformation pour les images
+    # Préparer la transformation pour les images
 transform = transforms.Compose([
-    transforms.Resize((224, 224)),
-    transforms.ToTensor(),
-    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        transforms.Resize((224, 224)),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
 ])
-
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def extract_features(image_path):
     try:
@@ -75,33 +62,56 @@ def extract_features(image_path):
         print(f"Erreur lors de l'extraction des caractéristiques de {image_path}: {e}")
         return None
 
-@celery.task(bind=True)
-def process_images(self, image_folder, nb_cluster):
-    if not os.path.exists(image_folder):
-        os.makedirs(image_folder)
 
-    if not os.path.exists(SORTED_FOLDER):
-        os.makedirs(SORTED_FOLDER)
+def organize_files(df, image_folder, sorted_folder):
+    # Vérifier et créer le dossier de destination si nécessaire
+    if not os.path.exists(sorted_folder):
+        os.makedirs(sorted_folder)
+
+    # Obtenir les clusters uniques et les fichiers associés
+    clusters = df['cluster'].unique()
+    clustered_files = {cluster: df[df['cluster'] == cluster]['image'].tolist() for cluster in clusters}
+
+    print(clustered_files)
+
+    # Parcourir chaque cluster et organiser les fichiers
+    for cluster in clusters:
+        current_cluster = clustered_files[cluster]
+        folder_path = os.path.join(sorted_folder, f'group_{cluster + 1}')
+
+        # Vérifier et créer le sous-dossier pour le cluster si nécessaire
+        if not os.path.exists(folder_path):
+            os.makedirs(folder_path)
+
+        # Déplacer chaque image dans le sous-dossier correspondant
+        for img in current_cluster:
+            src_path = os.path.join(image_folder, img)
+            dest_path = os.path.join(folder_path, img)
+
+            # Vérifier si le fichier source existe avant de le déplacer
+            if not os.path.exists(src_path):
+                print(f"Le fichier source {src_path} n'existe pas.")
+                continue
+            try:
+                shutil.move(src_path, dest_path)
+            except Exception as e:
+                print(f"Erreur lors du déplacement de {src_path} vers {dest_path}: {e}")
+
+@celery.task(bind=True)
+def process_images(self, image_data, nb_cluster, upload_folder, sorted_folder):
 
     features = []
     image_names = []
 
-    # Parcourir les fichiers dans les sous-dossiers
-    for root, dirs, files in os.walk(image_folder):
-        for image_file in files:
-            if allowed_file(image_file):
-                image_path = os.path.join(root, image_file)
-                feat = extract_features(image_path)
-                if feat is not None:
-                    features.append(feat)
-                    image_names.append(image_file)
-
-    assert len(features) == len(image_names), "Toutes les listes doivent avoir la même longueur"
+    for filename, file_path in image_data:
+        feat = extract_features(file_path)
+        if feat is not None:
+            features.append(feat)
+            image_names.append(filename)
 
     features_array = np.array(features)
-    print(features_array.shape)
+    print(f"Features array shape: {features_array.shape}")
 
-    # Appliquer t-SNE avec une perplexité de 30
     tsne = TSNE(n_components=3, random_state=0, perplexity=30)
     projections = tsne.fit_transform(features_array)
 
@@ -112,11 +122,9 @@ def process_images(self, image_folder, nb_cluster):
         'image': image_names,
     })
 
-    # Appliquer KMeans
     km = KMeans(random_state=42, n_init=10, max_iter=100, n_clusters=nb_cluster)
     df['cluster'] = km.fit_predict(df[['x', 'y', 'z']])
 
-    # Visualisation des clusters avec Plotly
     fig = px.scatter_3d(
         df,
         x='x',
@@ -129,32 +137,14 @@ def process_images(self, image_folder, nb_cluster):
     )
     fig.update_traces(marker=dict(size=5))
 
-    # Sauvegarde du graphique
     output_path = os.path.join('static', 'cluster_plot.html')
     fig.write_html(output_path)
 
 
-    return output_path, df.to_dict()
+    
+    print("Calling organize_files function")
+    organize_files(df, upload_folder, sorted_folder)
+    print("organize_files function executed successfully")
 
-
-@celery.task(bind=True)
-def organize_files(self, df_dict, image_folder):
-    df = pd.DataFrame.from_dict(df_dict)
-
-    if not os.path.exists(SORTED_FOLDER):
-        os.makedirs(SORTED_FOLDER)
-
-    clusters = df['cluster'].unique()
-    clustered_files = {cluster: df[df['cluster'] == cluster]['image'].tolist() for cluster in clusters}
-
-    for cluster in clusters:
-        current_cluster = clustered_files[cluster]
-        folder_path = os.path.join(SORTED_FOLDER, f'group_{cluster + 1}')
-
-        if not os.path.exists(folder_path):
-            os.makedirs(folder_path)
-
-        for img in current_cluster:
-            src_path = os.path.join(image_folder, img)
-            dest_path = os.path.join(folder_path, img)
-            shutil.move(src_path, dest_path)
+    
+    return output_path
