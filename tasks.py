@@ -112,8 +112,11 @@ def process_images(self, image_data, nb_cluster, upload_folder, sorted_folder):
     features_array = np.array(features)
     print(f"Features array shape: {features_array.shape}")
 
-    tsne = TSNE(n_components=3, random_state=0, perplexity=30)
-    projections = tsne.fit_transform(features_array)
+    # tsne = TSNE(n_components=3, random_state=0, perplexity=30)
+    # projections = tsne.fit_transform(features_array)
+
+    umap_model = umap.UMAP(n_neighbors=30, min_dist=0.5, metric='euclidean', n_components=3)
+    projections = umap_model.fit_transform(features_array) 
 
     df = pd.DataFrame({
         'x': projections[:, 0],

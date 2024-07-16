@@ -3,7 +3,7 @@ import shutil
 import torch
 import torchvision.models as models
 import torchvision.transforms as transforms
-
+import umap.umap_ as umap
 
 
 UPLOAD_FOLDER = 'uploads'
