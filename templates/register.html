@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <title>Register</title>
+</head>
+<body>
+    {% extends "base.html" %}
+    {% block content %}
+    <h1>register</h1>
+    <form action="{{ url_for('register') }}" method="post">
+        {{ form.hidden_tag() }}
+        <div>
+            {{ form.username.label }}
+            {{ form.username }}
+        </div>
+        <div>
+            {{ form.email.label }}
+            {{ form.email }}
+        </div>
+        <div>
+            {{ form.password.label }}
+            {{ form.password }}
+        </div>
+        <div>
+            {{ form.confirm_password.label }}
+            {{ form.confirm_password }}
+        </div>
+        <div>
+            {{ form.submit }}
+        </div>
+    </form>
+    {% endblock %}
+</body>
+</html>

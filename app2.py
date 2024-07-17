@@ -1,11 +1,19 @@
 import shutil
 from flask import Flask, request, redirect, url_for, render_template, session, flash, send_file, jsonify
 from werkzeug.utils import secure_filename
-from tasks import  process_images, create_app, celery
+from flask_security import Security, SQLAlchemyUserDatastore, UserMixin, RoleMixin
+from database import create_app, db, User, Role, user_datastore
+from flask_security.utils import hash_password
+from forms import UploadForm, RegistrationForm
+from tasks import  process_images, celery
 from utils import *
 from celery.result import AsyncResult
+from flask_bcrypt import Bcrypt
+
 
 app, celery = create_app()
+db.init_app(app=app)
+bcrypt = Bcrypt(app)
 
 @app.route("/", methods=["GET", "POST"])
 async def index():
@@ -61,6 +69,28 @@ def download_zip(task_id):
     else:
         flash('The zip file does not exist.')
         return redirect(url_for('show_plot', task_id=task_id))
+    
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    form = RegistrationForm()
+    if form.validate_on_submit():
+        username = form.username.data
+        email = form.email.data
+        password = form.password.data
+        hash_password = bcrypt.generate_password_hash(password).decode('utf-8')
+        print(f"Username: {username}, Email: {email}, Password: {password}")
+        if User.query.filter_by(username=username).first() is None and User.query.filter_by(email=email).first() is None:
+            user_datastore.create_user(
+                email=email,
+                password=hash_password,
+                username=username,
+            )
+            db.session.commit()
+            flash('Registration successful. You can now log in.')
+            return redirect(url_for('index'))
+        else:
+            flash('Username or Email already exists.')
+    return render_template('register.html', form=form)
 
 if __name__ == '__main__':
     app.run(debug=True)

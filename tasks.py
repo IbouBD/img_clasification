@@ -1,36 +1,11 @@
-from flask import Flask, request, redirect, url_for, render_template, session, flash, send_file, jsonify
 from PIL import Image
 import numpy as np
-from celery import Celery
-import redis
 import pandas as pd
 from sklearn.manifold import TSNE
 from sklearn.cluster import KMeans
 import plotly.express as px
-
 from utils import*
-
-def create_app():
-    app = Flask(__name__)
-    app.secret_key = 'CHANGEME'
-
-    # Configuration de l'upload de fichiers
-    app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-    app.config['SORTED_FOLDER'] = SORTED_FOLDER
-    app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg', 'bmp'}
-
-    # Configuration de Flask-Session
-    app.config['SESSION_TYPE'] = 'redis'
-    app.config['SESSION_PERMANENT'] = False
-    app.config['SESSION_USE_SIGNER'] = True
-    app.config['SESSION_REDIS'] = redis.StrictRedis(host='localhost', port=6379)
-
-
-    # Configuration Celery
-    celery = Celery(app.import_name, backend='redis://localhost:6379/0', broker='redis://localhost:6379/0')
-    celery.conf.update(app.config)
-
-    return app, celery
+from database import create_app
 
 app, celery = create_app()
 
@@ -134,7 +109,7 @@ def process_images(self, image_data, nb_cluster, upload_folder, sorted_folder):
         y='y',
         z='z',
         color='cluster',
-        title='T-SNE with K-Mean Clustering',
+        title='3D space with your data',
         hover_data=['image'],
         color_continuous_scale='Viridis'
     )

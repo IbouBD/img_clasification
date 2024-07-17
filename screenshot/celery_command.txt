@@ -1,0 +1,1 @@
+celery -A app2.celery worker --loglevel=info --concurrency=2--pool=solo -l info
