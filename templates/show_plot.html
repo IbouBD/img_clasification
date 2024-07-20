@@ -29,8 +29,9 @@
                 <button class="btn" id="btn" type="submit">Download</button>
             </form>
         </div>
-    </section>
-    <script>
+    </section> 
+    
+    <script nonce="{{ nonce }}">
         function checkStatus() {
             $.ajax({
                 url: "{{ url_for('task_status', task_id=task_id) }}",

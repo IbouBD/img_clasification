@@ -126,6 +126,7 @@ nav{
 
 .nav2{
     display: inline-flex;
+    gap: 20px;
     align-items: center;
     margin: 0;
     padding: 0;
@@ -284,8 +285,8 @@ a{
 }
 
 .custum-file-upload {
-    height: 200px;
-    width: 300px;
+    height: 300px;
+    width: 500px;
     display: flex;
     flex-direction: column;
     align-items: space-between;
@@ -327,6 +328,11 @@ a{
   .custum-file-upload input {
     display: none;
   }
+
+  .drop-zone input {
+    display: none;
+  }
+
 
   .number-control {
     display: flex;
@@ -445,4 +451,73 @@ a{
   flex-direction: column;
   justify-content: center;
   align-items: center ;
+}
+
+.form{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.register{
+  padding: 50px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  background-color: white;
+  border: 3px solid #F5F5DC;
+  border-radius: 20px;
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+}
+
+.form_element{
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+}
+
+.field{
+  width: 100%;
+  height: auto;
+  border: 1px solid rgb(61, 61, 61);
+  border-radius: 20px;
+  padding: 10px;
+}
+
+.flash-messages {
+  margin-top: 20px;
+  color: #2c7781;
+}
+
+.alert {
+  padding: 15px;
+  margin-bottom: 20px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+}
+
+.alert-success {
+  color: #3c763d;
+  background-color: #dff0d8;
+  border-color: #d6e9c6;
+}
+
+.alert-danger {
+  color: #a94442;
+  background-color: #f2dede;
+  border-color: #ebccd1;
+}
+
+.nav-user{
+  border: 1px solid #333333;
+  border-radius: 40px;
+  padding: 15px;
+  width: 20px;
+  height: auto;
+  background-color: white;
+  text-align: center;
 }

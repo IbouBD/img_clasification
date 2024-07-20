@@ -1,10 +1,9 @@
 from flask import Flask, request, redirect, url_for, render_template, session, flash, send_file, jsonify
 from flask_security import Security, SQLAlchemyUserDatastore, UserMixin, RoleMixin
+
 from flask_security.utils import hash_password
 import uuid
 from flask_sqlalchemy import SQLAlchemy
-from flask_wtf.csrf import CSRFProtect
-from flask_talisman import Talisman
 
 from celery import Celery
 import redis
@@ -22,6 +21,7 @@ def create_app():
     # Configuration de Flask-Security
     app.config['SECURITY_REGISTERABLE'] = True
     app.config['SECURITY_PASSWORD_SALT'] = 'supersecretsalt'
+    app.config['WTF_CSRF_SECRET_KEY'] = 'somesupercsrf'
     # app.config['SECURITY_PASSWORD_HASH'] = 'bcrypt'
     # app.config['SECURITY_PASSWORD_SINGLE_HASH'] = ['bcrypt']  # Assurez-vous que bcrypt est inclus ici
     # app.config['SECURITY_SEND_REGISTER_EMAIL'] = False
@@ -93,6 +93,9 @@ class User(db.Model, UserMixin):
         secondary=roles_users, 
         backref=db.backref('users', lazy='dynamic')
     )
+
+    def __repr__(self):
+        return f'<User {self.username}>'
 
 class Role(db.Model, RoleMixin):
     id = db.Column(db.Integer, primary_key=True)
