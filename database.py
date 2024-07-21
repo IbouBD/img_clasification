@@ -1,5 +1,6 @@
 from flask import Flask, request, redirect, url_for, render_template, session, flash, send_file, jsonify
 from flask_security import Security, SQLAlchemyUserDatastore, UserMixin, RoleMixin
+from flask_login import AnonymousUserMixin
 
 from flask_security.utils import hash_password
 import uuid
@@ -34,6 +35,7 @@ def create_app():
     app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
     app.config['SORTED_FOLDER'] = SORTED_FOLDER
     app.config['ALLOWED_EXTENSIONS'] = ALLOWED_EXTENSIONS
+    app.config['ZIP_FOLDER'] = ARCHIVE_NAME
 
     # Configuration de Flask-Session
     app.config['SESSION_TYPE'] = 'redis'
@@ -96,6 +98,16 @@ class User(db.Model, UserMixin):
 
     def __repr__(self):
         return f'<User {self.username}>'
+    
+class AnonymousUser(AnonymousUserMixin):
+    @property
+    def id(self):
+        if 'anonymous_id' not in session:
+            session['anonymous_id'] = str(uuid.uuid4())
+        return session['anonymous_id']
+
+    def __repr__(self):
+        return f'<User Anonymous {self.id}>'
 
 class Role(db.Model, RoleMixin):
     id = db.Column(db.Integer, primary_key=True)

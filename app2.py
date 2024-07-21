@@ -2,8 +2,8 @@ import shutil
 from flask import Flask, request, redirect, url_for, render_template, session, flash, send_file, jsonify
 from werkzeug.utils import secure_filename
 from flask_security import Security, SQLAlchemyUserDatastore, UserMixin, RoleMixin
-from flask_login import UserMixin, LoginManager, login_user, logout_user, login_required
-from database import create_app, db, User, Role, user_datastore
+from flask_login import UserMixin, LoginManager, login_user, logout_user, login_required, current_user
+from database import create_app, db, User, Role, user_datastore, AnonymousUser
 from flask_security.utils import hash_password
 from forms import UploadForm, RegistrationForm, LoginForm
 from tasks import  process_images, celery
@@ -13,7 +13,9 @@ from flask_bcrypt import Bcrypt
 from flask_wtf.csrf import CSRFProtect
 from flask_talisman import Talisman
 import random
-
+import uuid
+import uuid
+import os,time,stat
 
 csrf = CSRFProtect()
 # Configuration de Flask-Talisman
@@ -55,6 +57,7 @@ login_manager.init_app(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 login_manager.login_message_category = 'info'
+login_manager.anonymous_user = AnonymousUser
 
 def generate_nonce(length=8):
     """Generate pseudorandom number."""
@@ -75,13 +78,28 @@ async def index():
         print("nb_cluster", nb_cluster)
         image_data = []
 
+        if current_user.is_authenticated:
+            user_folder = os.path.join(app.config['UPLOAD_FOLDER'], str(current_user.id))
+            user_data = os.path.join(app.config['SORTED_FOLDER'], str(current_user.id))
+            os.makedirs(user_folder, exist_ok=True)
+            os.makedirs(user_data, exist_ok=True)
+        else:
+            
+            anonymous_user_id= session.get('anonymous_id')
+            
+            user_folder = os.path.join(app.config['UPLOAD_FOLDER'], current_user.id)
+            user_data = os.path.join(app.config['SORTED_FOLDER'], current_user.id)
+            os.makedirs(user_folder, exist_ok=True)
+            os.makedirs(user_data, exist_ok=True)
+
         for file in files:
             if file and allowed_file(file.filename):
                 filename = secure_filename(file.filename)
-                file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-                image_data.append((filename, os.path.join(app.config['UPLOAD_FOLDER'], filename)))
+                file_path = os.path.join(user_folder, filename)
+                file.save(file_path)
+                image_data.append((filename, file_path))
 
-        task = process_images.apply_async(args=[image_data, nb_cluster, app.config['UPLOAD_FOLDER'], app.config['SORTED_FOLDER']])
+        task = process_images.apply_async(args=[image_data, nb_cluster, user_folder, user_data])
         session['task_id'] = task.id
         
         return redirect(url_for('show_plot', task_id=task.id))
@@ -104,19 +122,35 @@ def show_plot(task_id):
     return render_template('show_plot.html', task_id=task_id, nonce=nonce)
 
 
-@app.route('/download_zip/<task_id>', methods=["GET"])
-def download_zip(task_id):
-    zip_path = shutil.make_archive(
-        base_name=os.path.join(app.config['SORTED_FOLDER']),
-        format='zip',
-        root_dir=app.config['SORTED_FOLDER']
-    )
-    if os.path.exists(zip_path):
-        shutil.rmtree(app.config['SORTED_FOLDER'])
-        return send_file(zip_path, as_attachment=True)
+@app.route('/download_zip', methods=["GET"])
+def download_zip():
+    if current_user.is_authenticated:
+        user_sorted_folder = os.path.join(app.config['SORTED_FOLDER'], str(current_user.id))
+        user_zip_folder = os.path.join(app.config['ZIP_FOLDER'], str(current_user.id))
+   
     else:
-        flash('The zip file does not exist.')
-        return redirect(url_for('show_plot', task_id=task_id))
+        user_sorted_folder = os.path.join(app.config['SORTED_FOLDER'], current_user.id)
+        user_zip_folder = os.path.join(app.config['ZIP_FOLDER'], current_user.id)
+
+    os.makedirs(user_zip_folder, exist_ok=True)
+
+    zip_path = shutil.make_archive(
+        base_name=os.path.join(user_zip_folder, 'sorted_images'),
+        format='zip',
+        root_dir=user_sorted_folder
+    )
+
+    if os.path.exists(zip_path):
+        response = send_file(zip_path, as_attachment=True)
+
+         # Ensure file is closed after sending
+        response.call_on_close(cleanup_files(zip_path, user_sorted_folder, user_zip_folder))
+        return response
+    else:
+        flash('The zip file does not exist.', 'danger')
+        return redirect(url_for('show_plot'))
+    
+
     
     
 @app.route('/register', methods=['GET', 'POST'])
@@ -148,6 +182,35 @@ def register():
             return redirect(url_for('register'))
     return render_template('register.html', form=form)
 
+@app.route('/delete_file')
+def delete_file():
+    one_minute_ago = time.time() - 180
+
+    # Determine the user's ZIP folder
+    if current_user.is_authenticated:
+        user_zip_folder = os.path.join(app.config['ZIP_FOLDER'], str(current_user.id))
+    else:
+        user_zip_folder = os.path.join(app.config['ZIP_FOLDER'], current_user.id)
+
+    # Check if the folder exists
+    if not os.path.exists(user_zip_folder):
+        print({"error": "User zip folder does not exist"})
+        return jsonify({"error": "User zip folder does not exist"}), 404
+
+    deleted_files = []
+    try:
+        # Loop through the files in the user's folder
+        for filename in os.listdir(user_zip_folder):
+            file_path = os.path.join(user_zip_folder, filename)
+            if os.path.isfile(file_path):
+                mtime = os.path.getmtime(file_path)
+                if mtime < one_minute_ago:
+                    os.remove(file_path)
+                    deleted_files.append(filename)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    print({"deleted_files": deleted_files, "status": "deleted" if deleted_files else "no files to delete"})
+    return jsonify({"deleted_files": deleted_files, "status": "deleted" if deleted_files else "no files to delete"})
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -162,7 +225,8 @@ def login():
             session['email'] = email
             session['username'] = user.username
             login_user(user)
-            return redirect(url_for('index'))
+            next_page = request.args.get('next')
+            return redirect(next_page) if next_page else redirect(url_for('index'))
         else:
             flash('Login Unsuccessful. Please check email and password', 'danger')
     return render_template('login.html', form=form)
