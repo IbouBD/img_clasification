@@ -115,6 +115,10 @@ h2{
   background-color: #606fe4;
 }
 
+.submit_btn:hover{
+  background-color: #606fe4;
+}
+
 nav{
     padding-right: 25px;
     padding-left: 25px;
@@ -460,7 +464,8 @@ a{
 }
 
 .register{
-  padding: 50px;
+  width: max-content;
+  padding: 40px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -520,4 +525,16 @@ a{
   height: auto;
   background-color: white;
   text-align: center;
+}
+
+.submit_btn{
+  width: 100%;
+  border: none;
+    border-radius: 20px;
+    background-color: #3E51E9;
+    color: #AEBDFA;
+    padding: 13px;
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
 }

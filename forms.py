@@ -12,9 +12,9 @@ class RegistrationForm(FlaskForm):
     email = StringField('Email', validators=[DataRequired(), Email()],render_kw={"class":"field", 'placeholder': 'email'})
     password = PasswordField('Password', validators=[DataRequired()],render_kw={"class":"field", 'placeholder': 'password'})
     confirm_password = PasswordField('Confirm Password', validators=[DataRequired(), EqualTo('password')],render_kw={"class":"field", 'placeholder': 'confirm password'})
-    submit = SubmitField('Register', render_kw={"class":"btn"})
+    submit = SubmitField('Register', render_kw={"class":"submit_btn"})
 
 class LoginForm(FlaskForm):
     email = StringField('Email', validators=[DataRequired(), Email()],render_kw={"class":"field", 'placeholder': 'email'})
     password = PasswordField('Password', validators=[DataRequired()],render_kw={"class":"field", 'placeholder': 'password'})
-    submit = SubmitField('Login', render_kw={"class":"btn"})
+    submit = SubmitField('Login', render_kw={"class":"submit_btn"})
