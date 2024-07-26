@@ -13,7 +13,7 @@ from flask_bcrypt import Bcrypt
 from flask_wtf.csrf import CSRFProtect
 from flask_talisman import Talisman
 import random
-import uuid
+from apscheduler.schedulers.background import BackgroundScheduler
 import uuid
 import os,time,stat
 
@@ -122,8 +122,8 @@ def show_plot(task_id):
     return render_template('show_plot.html', task_id=task_id, nonce=nonce)
 
 
-@app.route('/download_zip', methods=["GET"])
-def download_zip():
+@app.route('/download_zip/<task_id>', methods=["GET"])
+def download_zip(task_id):
     if current_user.is_authenticated:
         user_sorted_folder = os.path.join(app.config['SORTED_FOLDER'], str(current_user.id))
         user_zip_folder = os.path.join(app.config['ZIP_FOLDER'], str(current_user.id))
@@ -133,22 +133,32 @@ def download_zip():
         user_zip_folder = os.path.join(app.config['ZIP_FOLDER'], current_user.id)
 
     os.makedirs(user_zip_folder, exist_ok=True)
-
-    zip_path = shutil.make_archive(
-        base_name=os.path.join(user_zip_folder, 'sorted_images'),
-        format='zip',
-        root_dir=user_sorted_folder
-    )
+    try :
+        zip_path = shutil.make_archive(
+            base_name=os.path.join(user_zip_folder, 'sorted_images'),
+            format='zip',
+            root_dir=user_sorted_folder
+        )
+    
+    except Exception as e:
+        flash('The zip file does not exist.', 'danger')
+        return redirect(url_for('index'))
 
     if os.path.exists(zip_path):
-        response = send_file(zip_path, as_attachment=True)
+        try:
+            response = send_file(zip_path, as_attachment=True)
 
-         # Ensure file is closed after sending
-        response.call_on_close(cleanup_files(zip_path, user_sorted_folder, user_zip_folder))
-        return response
+            # Ensure file is closed after sending
+            response.call_on_close(cleanup_files(zip_path, user_sorted_folder, user_zip_folder))
+            return response
+        except Exception as e:
+            print(e)
+            flash('The zip file does not exist.', 'danger')
+            return redirect(url_for('show_plot', task_id=task_id))
+            
     else:
         flash('The zip file does not exist.', 'danger')
-        return redirect(url_for('show_plot'))
+        return redirect(url_for('show_plot', task_id=task_id))
     
 
     
@@ -181,36 +191,6 @@ def register():
             flash('Username or Email already exists.', 'danger')
             return redirect(url_for('register'))
     return render_template('register.html', form=form)
-
-@app.route('/delete_file')
-def delete_file():
-    one_minute_ago = time.time() - 180
-
-    # Determine the user's ZIP folder
-    if current_user.is_authenticated:
-        user_zip_folder = os.path.join(app.config['ZIP_FOLDER'], str(current_user.id))
-    else:
-        user_zip_folder = os.path.join(app.config['ZIP_FOLDER'], current_user.id)
-
-    # Check if the folder exists
-    if not os.path.exists(user_zip_folder):
-        print({"error": "User zip folder does not exist"})
-        return jsonify({"error": "User zip folder does not exist"}), 404
-
-    deleted_files = []
-    try:
-        # Loop through the files in the user's folder
-        for filename in os.listdir(user_zip_folder):
-            file_path = os.path.join(user_zip_folder, filename)
-            if os.path.isfile(file_path):
-                mtime = os.path.getmtime(file_path)
-                if mtime < one_minute_ago:
-                    os.remove(file_path)
-                    deleted_files.append(filename)
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-    print({"deleted_files": deleted_files, "status": "deleted" if deleted_files else "no files to delete"})
-    return jsonify({"deleted_files": deleted_files, "status": "deleted" if deleted_files else "no files to delete"})
 
 
 @app.route('/login', methods=['GET', 'POST'])

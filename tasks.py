@@ -1,11 +1,15 @@
 from PIL import Image
 import numpy as np
 import pandas as pd
+from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
 from sklearn.cluster import KMeans
 import plotly.express as px
 from utils import*
 from database import create_app
+from flask import jsonify
+from flask_login import current_user
+import time
 
 app, celery = create_app()
 
@@ -30,6 +34,7 @@ def extract_features(image_path):
     try:
         image = Image.open(image_path).convert('RGB')
         image = transform(image)
+        feature_extractor.eval()
         with torch.no_grad():
             features = feature_extractor(image.unsqueeze(0))
         return features.flatten().numpy()
@@ -46,8 +51,6 @@ def organize_files(df, image_folder, sorted_folder):
     # Obtenir les clusters uniques et les fichiers associés
     clusters = df['cluster'].unique()
     clustered_files = {cluster: df[df['cluster'] == cluster]['image'].tolist() for cluster in clusters}
-
-    print(clustered_files)
 
     # Parcourir chaque cluster et organiser les fichiers
     for cluster in clusters:
@@ -74,6 +77,7 @@ def organize_files(df, image_folder, sorted_folder):
 
 @celery.task(bind=True)
 def process_images(self, image_data, nb_cluster, upload_folder, sorted_folder):
+    pca = PCA(n_components=10)
 
     features = []
     image_names = []
@@ -89,18 +93,21 @@ def process_images(self, image_data, nb_cluster, upload_folder, sorted_folder):
 
     # tsne = TSNE(n_components=3, random_state=0, perplexity=30)
     # projections = tsne.fit_transform(features_array)
+    features_pca = pca.fit_transform(features_array)
+    # Conversion des features en DataFrame
+    df = pd.DataFrame(features_pca)
+    df['image'] = image_names
+    
+    # Réduction de dimensionnalité avec UMAP
+    umap_model = umap.UMAP(n_neighbors=50, min_dist=0.5, metric='euclidean', n_components=3)
+    projections = umap_model.fit_transform(df.iloc[:, :-2])  # Enlever les colonnes 'image' et 'class' avant l'ajustement
 
-    umap_model = umap.UMAP(n_neighbors=30, min_dist=0.5, metric='euclidean', n_components=3)
-    projections = umap_model.fit_transform(features_array) 
+    # Ajouter les nouvelles coordonnées réduites au DataFrame
+    df['x'] = projections[:, 0]
+    df['y'] = projections[:, 1]
+    df['z'] = projections[:, 2]
 
-    df = pd.DataFrame({
-        'x': projections[:, 0],
-        'y': projections[:, 1],
-        'z': projections[:, 2],
-        'image': image_names,
-    })
-
-    km = KMeans(random_state=42, n_init=10, max_iter=100, n_clusters=nb_cluster)
+    km = KMeans(random_state = 0, n_init = 10, max_iter=200,n_clusters=nb_cluster)
     df['cluster'] = km.fit_predict(df[['x', 'y', 'z']])
 
     fig = px.scatter_3d(
@@ -126,3 +133,40 @@ def process_images(self, image_data, nb_cluster, upload_folder, sorted_folder):
 
     
     return output_path
+
+@celery.task
+def del_file():
+    one_minute_ago = time.time() - 180
+
+    if current_user.is_authenticated:
+        user_zip_folder = os.path.join(app.config['ZIP_FOLDER'], str(current_user.id))
+        user_sorted_folder = os.path.join(app.config['SORTED_FOLDER'], str(current_user.id))
+    else:
+        user_zip_folder = os.path.join(app.config['ZIP_FOLDER'], 'anonymous')
+        user_sorted_folder = os.path.join(app.config['SORTED_FOLDER'], 'anonymous')
+
+    deleted_files = []
+
+    try:
+        if os.path.exists(user_zip_folder):
+            for filename in os.listdir(user_zip_folder):
+                file_path = os.path.join(user_zip_folder, filename)
+                if os.path.isfile(file_path):
+                    mtime = os.path.getmtime(file_path)
+                    if mtime < one_minute_ago:
+                        os.remove(file_path)
+                        deleted_files.append(filename)
+
+        if os.path.exists(user_sorted_folder):
+            for filename in os.listdir(user_sorted_folder):
+                file_path = os.path.join(user_sorted_folder, filename)
+                if os.path.isfile(file_path):
+                    mtime = os.path.getmtime(file_path)
+                    if mtime < one_minute_ago:
+                        os.remove(file_path)
+                        deleted_files.append(filename)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+    print({"deleted_files": deleted_files, "status": "deleted" if deleted_files else "no files to delete"})
+    return jsonify({"deleted_files": deleted_files, "status": "deleted" if deleted_files else "no files to delete"})
