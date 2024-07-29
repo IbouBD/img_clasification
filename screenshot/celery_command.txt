@@ -1,1 +1,2 @@
 celery -A app2.celery worker --loglevel=info --concurrency=2--pool=solo -l info
+celery -A app2.celery beat --loglevel=info

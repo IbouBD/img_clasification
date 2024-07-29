@@ -5,7 +5,7 @@ from wtforms.validators import DataRequired, Email, EqualTo
 class UploadForm(FlaskForm):
     files = FileField('Upload Images', validators=[DataRequired()], render_kw={"webkitdirectory": "webkitdirectory", "directory": "directory", "multiple": "multiple"})
     nb_cluster = IntegerField('Number of Clusters', validators=[DataRequired()])
-    submit = SubmitField('Submit')
+    submit = SubmitField('Submit', render_kw={"class":"submit_btn"})
 
 class RegistrationForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired()],render_kw={"class":"field", 'placeholder': 'username'})

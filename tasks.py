@@ -142,8 +142,8 @@ def del_file():
         user_zip_folder = os.path.join(app.config['ZIP_FOLDER'], str(current_user.id))
         user_sorted_folder = os.path.join(app.config['SORTED_FOLDER'], str(current_user.id))
     else:
-        user_zip_folder = os.path.join(app.config['ZIP_FOLDER'], 'anonymous')
-        user_sorted_folder = os.path.join(app.config['SORTED_FOLDER'], 'anonymous')
+        user_zip_folder = os.path.join(app.config['ZIP_FOLDER'], current_user.id)
+        user_sorted_folder = os.path.join(app.config['SORTED_FOLDER'], current_user.id)
 
     deleted_files = []
 

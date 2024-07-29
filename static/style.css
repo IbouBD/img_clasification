@@ -5,7 +5,7 @@ html, body{
     font-weight: bold;
     font-style: normal;
     background-color: #FFF9E9;
-    
+    scroll-behavior: smooth;
 }
 
 .c1{
@@ -537,4 +537,19 @@ a{
     display: flex;
     flex-direction: row;
     justify-content: center;
+}
+
+#drop-zone {
+  border: 2px dashed #5668ec;
+  border-radius: 20px;
+  padding: 20px;
+  text-align: center;
+  font-size: 18px;
+  color: #ccc;
+  margin-top: 20px;
+  cursor: pointer;
+}
+#drop-zone.dragover {
+  border-color: #000;
+  color: #000;
 }
