@@ -101,7 +101,9 @@ async def index():
 
         if len(image_data) < nb_cluster:
             flash(f"You can't have more groups than images, number of groups : {nb_cluster}, number of images : {len(image_data)}", 'danger')
+            image_data = []
             return redirect(url_for('index'))
+    
         task = process_images.apply_async(args=[image_data, nb_cluster, user_folder, user_data])
         session['task_id'] = task.id
         
