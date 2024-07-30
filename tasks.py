@@ -158,13 +158,25 @@ def del_file():
                         deleted_files.append(filename)
 
         if os.path.exists(user_sorted_folder):
-            for filename in os.listdir(user_sorted_folder):
-                file_path = os.path.join(user_sorted_folder, filename)
-                if os.path.isfile(file_path):
-                    mtime = os.path.getmtime(file_path)
-                    if mtime < one_minute_ago:
-                        os.remove(file_path)
-                        deleted_files.append(filename)
+            for folder in os.listdir(user_sorted_folder):
+                folder_path = os.path.join(user_sorted_folder, folder)
+                
+                # Check if it's a directory before proceeding
+                if os.path.isdir(folder_path):
+                    for filename in os.listdir(folder_path):
+                        file_path = os.path.join(folder_path, filename)
+                        
+                        # Check if it's a file before proceeding
+                        if os.path.isfile(file_path):
+                            mtime = os.path.getmtime(file_path)
+                            if mtime < one_minute_ago:
+                                os.remove(file_path)
+                                deleted_files.append(file_path)
+                    
+                    # After all files are checked, remove the folder if it's empty
+                    if not os.listdir(folder_path):
+                        shutil.rmtree(folder_path)
+                
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
