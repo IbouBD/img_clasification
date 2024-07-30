@@ -11,9 +11,13 @@ html, body{
 .c1{
   display: flex;
   flex-direction: row;
+  text-wrap: wrap;
+  flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
+  justify-content: space-around;
   margin-bottom: 100px;
+  padding-left: 100px ;
+  padding-right: 100px ;
 }
 
 .center{
@@ -170,6 +174,7 @@ a{
   flex-direction: column;
   justify-content: center;
   align-items: center;
+  text-align: center;
 }
 
 .ul2{
@@ -552,4 +557,45 @@ a{
 #drop-zone.dragover {
   border-color: #000;
   color: #000;
+}
+
+
+
+@media (max-width: 1690px) {
+  .expo-container {
+    /*padding-top: 56.25%; /* Ratio 16:9 pour les écrans plus petits */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+  }
+}
+
+@media (max-width: 1070px) {
+  .expo-container {
+    display: none;
+    overflow: hidden;
+  }
+
+  .expo {
+    display: none;
+    overflow: hidden;
+  }
+}
+
+.expo-container {
+  /*padding-top: 56.25%; /* Adjust the padding-top based on the aspect ratio you want */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.expo {
+  width: 658px;
+  height: 484px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #FFF9E9;
 }

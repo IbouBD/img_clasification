@@ -15,20 +15,24 @@
     {% block content %}
     <section class="s1">
         <div class="c1">
-            <div class="Presentation">
-                <h1 class="title">Discover the <br> 
-                    most powerfull <br>
-                    clustering method <br>
-                    for images.
-                </h1>
-                <p>Welcome to our AI-powered image classification website ! <br>
-                   Here, you will find a seamless and intuitive platform that <br>
-                   empowers you to effortlessly classify images with clustering method. <br>
-                   With this, you can classify your images in a few seconds.
-                </p>
-                <div><p><a class="btnl" href="#upload">Get started</a></p></div>
+            <div class="bt">
+                <div class="Presentation">
+                    <h1 class="title">Discover the <br> 
+                        most powerfull <br>
+                        clustering method <br>
+                        for images.
+                    </h1>
+                    <p>Welcome to our AI-powered image classification website ! <br>
+                       Here, you will find a seamless and intuitive platform that <br>
+                       empowers you to effortlessly classify images with clustering method. <br>
+                       With this, you can classify your images in a few seconds.
+                    </p>
+                    <div><p><a class="btnl" href="#upload">Get started</a></p></div>
+                </div>
             </div>
-            <img src="{{ url_for('static', filename='Capture.JPG') }}" alt="home">
+            <div class="expo-container">
+                <iframe class="expo" src="{{ url_for('static', filename='bp_expo.html') }}" ></iframe>
+              </div>
         </div>
         <div class="bt">
             <h2>
@@ -63,9 +67,12 @@
 
         <div class="comparaison">
             <img src="{{ url_for('static', filename='Comparaison.JPG') }}" alt="comparaison">
-            <h3>
-                Our AI-powered image clustering in action: VGG19 feature extraction (top) naturally groups similar images, while t-SNE with K-Means (bottom) demonstrates our system's automatic classification capabilities.
-            </h3>
+            <div class="bt">
+                <h3>
+                    Our AI-powered image clustering in action: VGG19 feature extraction (top) naturally groups similar images, while t-SNE with K-Means (bottom) demonstrates our system's automatic classification capabilities.
+                </h3>
+            </div>
+            
         </div>
         
         <div class="pm2">
@@ -121,7 +128,8 @@
     </section>
     
     <section class="upload" id="upload">
-        <h1>Let's try our service</h1>
+        <div class="bt">
+            <h1>Let's try our service</h1>
         <h2>Upload Images</h2>
         <form method="post" enctype="multipart/form-data">
             {{ form.csrf_token }}
@@ -153,6 +161,8 @@
             </div>
             
         </form>
+        </div>
+        
     </section>
     
     
